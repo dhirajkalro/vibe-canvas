@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vibe canvas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14151a;
+    --panel: #1b1d24;
+    --line: #2c2e37;
+    --text: #e8e9ec;
+    --text-dim: #8b8d99;
+    --accent: #5fd6c9;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    overflow: hidden;
+  }
+  #canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: crosshair;
+  }
+  .brand {
+    position: fixed;
+    top: 20px;
+    left: 24px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text);
+    pointer-events: none;
+    user-select: none;
+  }
+  .brand span {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 400;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+  .panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+    padding: 16px 24px 20px;
+    display: flex;
+    align-items: flex-end;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+  .fader {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 110px;
+  }
+  .fader-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .fader-label b {
+    font-weight: 500;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--line);
+    border-radius: 2px;
+    outline-offset: 4px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    margin-top: -5px;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: none;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  .divider {
+    width: 1px;
+    align-self: stretch;
+    background: var(--line);
+    margin-bottom: 4px;
+  }
+  .group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .group-label {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .swatches {
+    display: flex;
+    gap: 8px;
+  }
+  .swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    cursor: pointer;
+    padding: 0;
+  }
+  .swatch.active {
+    border: 2px solid var(--text);
+  }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .toggle-row input {
+    accent-color: var(--accent);
+    width: 14px;
+    height: 14px;
+  }
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+  }
+  button.action {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 9px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  button.action:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--accent);
+  }
+  @media (max-width: 760px) {
+    .panel { gap: 18px; padding: 14px 16px 18px; }
+    .fader { min-width: 84px; }
+    .actions { margin-left: 0; width: 100%; justify-content: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<div class="brand">Vibe canvas
+  <span>drag to paint / click to burst</span>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<div class="panel">
+  <div class="fader">
+    <div class="fader-label">Particles <b id="particleVal">3</b></div>
+    <input type="range" id="particleCount" min="1" max="10" value="3" step="1">
+  </div>
+  <div class="fader">
+    <div class="fader-label">Gravity <b id="gravityVal">0.0</b></div>
+    <input type="range" id="gravity" min="-2" max="2" value="0" step="0.1">
+  </div>
+  <div class="fader">
+    <div class="fader-label">Trail <b id="trailVal">60</b></div>
+    <input type="range" id="trail" min="15" max="220" value="60" step="5">
+  </div>
+  <div class="fader">
+    <div class="fader-label">Speed <b id="speedVal">1.0</b></div>
+    <input type="range" id="speed" min="0.2" max="3" value="1" step="0.1">
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="group">
+    <div class="group-label">Theme</div>
+    <div class="swatches">
+      <button class="swatch active" data-theme="aurora" style="background:#7F77DD" title="Aurora" aria-label="Aurora theme"></button>
+      <button class="swatch" data-theme="sunset" style="background:#D85A30" title="Sunset" aria-label="Sunset theme"></button>
+      <button class="swatch" data-theme="ocean" style="background:#378ADD" title="Ocean" aria-label="Ocean theme"></button>
+      <button class="swatch" data-theme="mono" style="background:#888780" title="Mono" aria-label="Mono theme"></button>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="group-label">Idle drift</div>
+    <label class="toggle-row"><input type="checkbox" id="ambientToggle" checked> Ambient particles</label>
+  </div>
+
+  <div class="actions">
+    <button class="action" id="clearBtn">Clear</button>
+    <button class="action" id="saveBtn">Save PNG</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  let dpr = window.devicePixelRatio || 1;
+
+  function resize(){
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const themes = {
+    aurora: ['#7F77DD','#5DCAA5','#ED93B1','#AFA9EC','#9FE1CB'],
+    sunset: ['#F0997B','#FAC775','#ED93B1','#D85A30','#F5C4B3'],
+    ocean:  ['#85B7EB','#5DCAA5','#378ADD','#9FE1CB','#B5D4F4'],
+    mono:   ['#B4B2A9','#888780','#D3D1C7','#5F5E5A','#F1EFE8']
+  };
+  let currentTheme = 'aurora';
+
+  const state = {
+    particleCount: 3,
+    gravity: 0,
+    trail: 60,
+    speed: 1,
+    ambient: true
+  };
+
+  const particleCountEl = document.getElementById('particleCount');
+  const gravityEl = document.getElementById('gravity');
+  const trailEl = document.getElementById('trail');
+  const speedEl = document.getElementById('speed');
+  const ambientEl = document.getElementById('ambientToggle');
+
+  particleCountEl.addEventListener('input', () => {
+    state.particleCount = parseInt(particleCountEl.value, 10);
+    document.getElementById('particleVal').textContent = state.particleCount;
+  });
+  gravityEl.addEventListener('input', () => {
+    state.gravity = parseFloat(gravityEl.value);
+    document.getElementById('gravityVal').textContent = state.gravity.toFixed(1);
+  });
+  trailEl.addEventListener('input', () => {
+    state.trail = parseInt(trailEl.value, 10);
+    document.getElementById('trailVal').textContent = state.trail;
+  });
+  speedEl.addEventListener('input', () => {
+    state.speed = parseFloat(speedEl.value);
+    document.getElementById('speedVal').textContent = state.speed.toFixed(1);
+  });
+  ambientEl.addEventListener('change', () => {
+    state.ambient = ambientEl.checked;
+  });
+
+  document.querySelectorAll('.swatch[data-theme]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentTheme = btn.dataset.theme;
+      document.querySelectorAll('.swatch[data-theme]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  let particles = [];
+  let lastX = null, lastY = null;
+
+  function spawn(x, y, count, burst){
+    const palette = themes[currentTheme];
+    for (let i=0;i<count;i++){
+      const angle = burst ? Math.random()*Math.PI*2 : (Math.random()-0.5)*1.2;
+      const baseSpeed = burst ? 1.5 + Math.random()*3 : 0.3 + Math.random()*1.2;
+      const speed = baseSpeed * state.speed;
+      particles.push({
+        x, y,
+        vx: Math.cos(angle)*speed,
+        vy: Math.sin(angle)*speed,
+        life: 0,
+        maxLife: state.trail + Math.random()*state.trail*0.6,
+        size: 2 + Math.random()*4,
+        color: palette[Math.floor(Math.random()*palette.length)]
+      });
+    }
+  }
+
+  canvas.addEventListener('mousemove', (e) => {
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    if (lastX !== null){
+      const dist = Math.hypot(mouseX-lastX, mouseY-lastY);
+      const steps = Math.max(1, Math.floor(dist/6));
+      for (let s=0; s<steps; s++){
+        const t = s/steps;
+        spawn(lastX + (mouseX-lastX)*t, lastY + (mouseY-lastY)*t, state.particleCount, false);
+      }
+    }
+    lastX = mouseX; lastY = mouseY;
+  });
+  canvas.addEventListener('mouseleave', () => { lastX = null; lastY = null; });
+  canvas.addEventListener('click', (e) => {
+    spawn(e.clientX, e.clientY, state.particleCount*10, true);
+  });
+  canvas.addEventListener('touchmove', (e) => {
+    const t = e.touches[0];
+    const x = t.clientX, y = t.clientY;
+    if (lastX !== null) spawn(x, y, state.particleCount, false);
+    lastX = x; lastY = y;
+    e.preventDefault();
+  }, { passive: false });
+
+  document.getElementById('clearBtn').addEventListener('click', () => { particles = []; });
+  document.getElementById('saveBtn').addEventListener('click', () => {
+    canvas.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'vibe-canvas.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  });
+
+  function frame(){
+    const w = window.innerWidth, h = window.innerHeight;
+    ctx.clearRect(0,0,w,h);
+
+    if (state.ambient && Math.random() < 0.06){
+      spawn(Math.random()*w, Math.random()*h, 1, false);
+    }
+
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += state.gravity * 0.05;
+      p.vx *= 0.985;
+      p.vy *= 0.99;
+      p.life++;
+    });
+    particles = particles.filter(p => p.life < p.maxLife && p.y < h + 60 && p.y > -60);
+
+    particles.forEach(p => {
+      const alpha = 1 - p.life/p.maxLife;
+      ctx.beginPath();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.arc(p.x, p.y, p.size*alpha + p.size*0.3, 0, Math.PI*2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
